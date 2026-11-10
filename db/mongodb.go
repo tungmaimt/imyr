@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"fmt"
+	"slices"
+	"time"
 
 	"proj/imyr/config"
 
@@ -80,6 +82,61 @@ func useOptions(ops ...option) any {
 	}
 
 	return queryOps
+}
+
+type IndexConfig struct {
+	ins    Model
+	indexs []mongo.IndexModel
+}
+
+var indexCfgs = []IndexConfig{}
+
+func AddIndex[T Model](key string, direction int, option *options.IndexOptionsBuilder) (index1 int, index2 int) {
+	var ins T
+
+	index := slices.IndexFunc(indexCfgs, func(ic IndexConfig) bool {
+		return ins.GetCollectionName() == ic.ins.GetCollectionName() && ins.GetDbName() == ic.ins.GetDbName()
+	})
+
+	if index == -1 {
+		indexCfgs = append(indexCfgs, IndexConfig{
+			ins:    ins,
+			indexs: []mongo.IndexModel{},
+		})
+
+		index = 0
+	}
+
+	indexCfgs[index].indexs = append(indexCfgs[index].indexs, mongo.IndexModel{
+		Keys:    bson.D{{Key: key, Value: direction}},
+		Options: option,
+	})
+
+	fmt.Printf("add index for %s: %s - %d %d\n", ins.GetCollectionName(), key, index, len(indexCfgs[index].indexs))
+
+	return index, len(indexCfgs[index].indexs) - 1
+}
+
+func CreateIndex() (err error) {
+	for _, indexConfig := range indexCfgs {
+		fmt.Println("create index with ", len(indexConfig.indexs))
+		getCollection(indexConfig.ins.GetCollectionName(), indexConfig.ins.GetDbName(), func(c *mongo.Collection) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			names, cerr := c.Indexes().CreateMany(ctx, indexConfig.indexs)
+			err = cerr
+
+			if err != nil {
+				fmt.Print(err)
+				return
+			}
+
+			fmt.Printf("Create index for %s: %v\n", indexConfig.ins.GetCollectionName(), names)
+		})
+	}
+
+	return
 }
 
 func init() {

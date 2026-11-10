@@ -5,6 +5,7 @@ import (
 	"proj/imyr/bed"
 	"proj/imyr/config"
 	"proj/imyr/core"
+	"proj/imyr/db"
 	"proj/imyr/user"
 
 	"github.com/gofiber/fiber/v2"
@@ -12,6 +13,7 @@ import (
 )
 
 func main() {
+	var err error
 	/**
 	 * django/pongo2 view engine
 	 */
@@ -49,6 +51,13 @@ func main() {
 
 	// test
 	bed.Router(app, api)
+
+	// create index mongodb
+	err = db.CreateIndex()
+
+	if err != nil {
+		panic(err)
+	}
 
 	// homepage
 	homeView := core.View{
@@ -130,7 +139,7 @@ func main() {
 	 * start
 	 */
 
-	err := app.Listen(":3000")
+	err = app.Listen(":3000")
 
 	if err != nil {
 		panic(err)

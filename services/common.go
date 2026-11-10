@@ -76,7 +76,7 @@ func MapToStruct[T any](source map[string]any) (*T, error) {
 			continue
 		}
 
-		mapKey := fieldType.Name
+		mapKey := strings.ToLower(fieldType.Name)
 
 		tag := fieldType.Tag.Get("bson")
 		if tag == "" {
