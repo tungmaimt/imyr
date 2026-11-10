@@ -1,0 +1,47 @@
+{% extends "core/base.html" %}
+
+{% block page_title %}
+IMYR | Test
+{% endblock %}
+
+{% block header %}
+Auth
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">Test</div>
+      <div class="card-body">
+        <button type="button" class="btn btn-primary" id="btnTest">
+          asd
+        </button>
+        
+      </div>
+      <div class="card-footer text-muted"></div>
+    </div>
+    
+    
+  </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const IMYR = window.IMYR
+  const btn = document.getElementById('btnTest')
+
+  btn.addEventListener('click', () => {
+    IMYR.setLoading(btn, true)
+    setTimeout(
+      () => {
+        IMYR.setLoading(btn, false)
+      },
+      3000,
+    )
+  })
+})
+</script>
+{% endblock %}

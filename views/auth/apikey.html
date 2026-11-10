@@ -1,0 +1,432 @@
+{% extends "core/base.html" %}
+
+{% block page_title %}
+IMYR | Api key
+{% endblock %}
+
+{% block header %}
+Manager Api key
+{% endblock %}
+
+{% block style %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-end">
+  <button type="button" class="btn btn-primary" id="btnNewKey">
+    New api key
+  </button>
+</div>
+
+<div class="mt-3 card">
+  <div class="card-header">Api key list</div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover table-borderless align-middle etable" id="tableKey">
+        <thead>
+        </thead>
+        <tbody class="table-group-divider">
+        </tbody>
+        <caption>
+        </caption>
+      </table>
+    </div>
+  </div>
+  <div class="card-footer text-muted"></div>
+</div>
+
+<!-- Modal -->
+<div
+  class="modal fade"
+  id="modalNewKey"
+  tabindex="-1"
+  role="dialog"
+  aria-labelledby="modalTitleNewKey"
+  aria-hidden="true"
+>
+  <div
+    class="modal-dialog modal-md modal-dialog-scrollable modal-dialog-centered"
+    role="document"
+  >
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitleNewKey">
+          New Api Key
+        </h5>
+        <button
+          type="button"
+          class="close"
+          data-dismiss="modal"
+          aria-label="Close"
+        >&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="inputNewName">Key name</label>
+          <input type="text"
+            class="form-control"
+            id="inputNewName"
+            placeholder="apikeyname"
+          >
+          <div>
+            <label for="inputNewRole">Key role</label>
+            <select class="form-control" id="inputNewRole">
+              <option value="admin">admin</option>
+              <option value="manager">manager</option>
+              <option value="operator">operator</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-dismiss="modal"
+        >
+          Close
+        </button>
+        <button type="button" class="btn btn-primary" id="btnSubmitNewKey">Submit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div
+  class="modal fade"
+  id="modalUpdateKey"
+  tabindex="-1"
+  role="dialog"
+  aria-labelledby="modalTitleUpdateKey"
+  aria-hidden="true"
+>
+  <div
+    class="modal-dialog modal-md modal-dialog-scrollable modal-dialog-centered"
+    role="document"
+  >
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitleUpdateKey">
+          Update api key
+        </h5>
+        <button
+          type="button"
+          class="close"
+          data-dismiss="modal"
+          aria-label="Close"
+        >&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div>
+          <label for="inputUpdateRole">Key role</label>
+          <select class="form-control" id="inputUpdateRole">
+            <option value="admin">admin</option>
+            <option value="manager">manager</option>
+            <option value="operator">operator</option>
+          </select>
+        </div>
+
+        <div class="form-check">
+          <label class="form-check-label">
+            <input type="checkbox" class="form-check-input" id="checkGenNewKey">
+            Gen new key
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-dismiss="modal"
+        >
+          Close
+        </button>
+        <button type="button" class="btn btn-primary" id="btnSubmitUpdateKey">Submit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const IMYR = window.IMYR
+  const tableDOM = document.getElementById('tableKey')
+
+  /** 
+   * USETS TABLE
+   * */
+
+  const sortField = ['id', 'name', 'role']
+
+  const colsConfig = [
+    {
+      label: 'ID',
+      sortField: 'id',
+      render: (data) => {
+        return data.id
+      },
+    },
+    {
+      label: 'Name',
+      sortField: 'name',
+      render: (data) => {
+        return data.name
+      },
+    },
+    {
+      label: 'Role',
+      sortField: 'role',
+      render: (data) => {
+        return data.role
+      },
+    },
+    {
+      label: 'Status',
+      render: (data) => {
+        return `
+        <input type="checkbox"
+          ${ data.status === 'active' ? 'checked' : ''}
+          data-action="change_status"
+          data-info="${data.id}"
+          data-toggle="switchbutton"
+          data-on="Active"
+          data-off="Inactive"
+          data-onstyle="success"
+          data-offstyle="secondary"
+        >`
+      }
+    },
+    {
+      label: 'Key',
+      render: (data) => {
+        return `
+        ${data.key}
+        <i class="far fa-copy text-primary" data-action="copy_key" data-info=${data.key} role="button"></i>
+        `
+      }
+    },
+    {
+      label: 'Action',
+      render: (data) => {
+        return `
+        <div class="btn-group" role="group">
+          <button type="button"
+            class="btn btn-warning"
+            data-action="update_info"
+            data-info="${data.id}"
+          >
+            update
+          </button>
+        </div>`
+      },
+    },
+  ]
+
+  const eTable = IMYR.eTable(tableDOM, {
+    cols: colsConfig,
+    limit: 10,
+    sortDir: 'asc',
+    fetchData: ({ limit, offset, sortCol, sortDir, sortField }) => {
+      return IMYR.request(
+        'get_keys',
+        {
+          offset, limit,
+          sortCol, sortDir, sortField,
+        },
+      ).then((data) => {
+        if (data.status === 200) {
+          return data.data
+        }
+
+        Swal.fire({ icon: 'error', text: data.message || data.error || data })
+
+        return { total: 0, data: [] }
+      })
+    },
+    onPostRender: () => {
+      $(function() {
+        document.querySelectorAll(
+          'input[type=checkbox][data-toggle="switchbutton"]'
+        ).forEach(function(ele) {
+          ele.switchButton();
+        })
+      })
+    },
+  })
+
+  tableDOM.addEventListener('change', (e) => {
+    if (e.target.dataset.action === 'change_status') {
+      onUpdateStatus(e)
+    }
+  })
+
+  tableDOM.addEventListener('click', (e) => {
+    if (e.target.dataset.action === 'update_info') {
+      onUpdateInfo(e)
+    }
+
+    if (e.target.dataset.action === 'copy_key') {
+      onCopyKey(e)
+    }
+  })
+
+  /**
+   * NEW KEY
+   * */
+  const newKeyDOMs = {
+    modal: new bootstrap.Modal(document.getElementById('modalNewKey')),
+    name: document.getElementById('inputNewName'),
+    role: document.getElementById('inputNewRole'),
+    open: document.getElementById('btnNewKey'),
+    submit: document.getElementById('btnSubmitNewKey'),
+  }
+
+  newKeyDOMs.open.addEventListener('click', () => {
+    Object.values(newKeyDOMs).forEach((inputDOM) => {
+      inputDOM.value = ''
+    })
+
+    newKeyDOMs.modal.show()
+  })
+
+  newKeyDOMs.submit.addEventListener('click', () => {
+    const data = {
+      name: newKeyDOMs.name.value.trim(),
+      role: newKeyDOMs.role.value.trim(),
+    }
+
+
+
+    if (!data.name || !data.role) {
+      Swal.fire({ icon: 'error', text: 'name and role is required' })
+      return
+    }
+
+    IMYR.request('post_key', data).then((resData) => {
+      if (resData.status !== 200) {
+        Swal.fire({ icon: 'error', text: resData.message || resData.error })
+        return
+      }
+
+      Swal.fire({ icon: 'success', text: 'New api key added' }).then(() => {
+        eTable.requestRender()
+        newKeyDOMs.modal.hide()
+      })
+    })
+  })
+
+  /** 
+   * UPDATE STATUS
+   * */
+
+  const onUpdateStatus = (e) => {
+    const key_id = e.target.dataset.info
+    const status = e.target.checked ? 'active' : 'inactive'
+
+    e.target.switchButton(e.target.checked ? 'off' : 'on', true)
+
+    IMYR.request(
+      'update_status',
+      {
+        key: key_id,
+        status,
+      },
+    ).then((data) => {
+      if (data.status !== 200) {
+        Swal.fire({ icon: 'error', text: data.message || data.error })
+        return
+      }
+
+      Swal.fire({ icon: 'success', text: `Success set key ${status}` })
+      e.target.switchButton(status === 'active' ? 'on' : 'off', true)
+    })
+  }
+
+  /**
+   * UPDATE ROLE, KEY
+   * */
+
+  const updateInfoData = {
+    selected: null,
+  }
+
+  const updateInfoDOMs = {
+    modal: new bootstrap.Modal(document.getElementById('modalUpdateKey')),
+    modalTitle: document.getElementById('modalTitleUpdateKey'),
+    role: document.getElementById('inputUpdateRole'),
+    genNewKey: document.getElementById('checkGenNewKey'),
+    submit: document.getElementById('btnSubmitUpdateKey'),
+  }
+
+  const onUpdateInfo = (e) => {
+    updateInfoData.selected = eTable.tData.data.find(({ id }) => id === parseInt(e.target.dataset.info))
+
+    if (!updateInfoData.selected) {
+      return
+    }
+
+    updateInfoDOMs.modal.show()
+    updateInfoDOMs.modalTitle.innerHTML = `Update <b>${updateInfoData.selected.name}</b>`
+    updateInfoDOMs.role.value = updateInfoData.selected.role
+    updateInfoDOMs.genNewKey.checked = false
+  }
+
+  updateInfoDOMs.submit.addEventListener('click', () => {
+    if (!updateInfoData.selected) {
+      return
+    }
+
+    const data = {
+      role: updateInfoDOMs.role.value,
+      gen_new_key: updateInfoDOMs.genNewKey.checked,
+    }
+
+    console.log(data)
+
+    if (!Object.values(data).some((v) => !!v)) {
+      Swal.fire({ icon: 'error', text: 'Nothing to update' })
+      return
+    }
+
+    IMYR.request(
+      'update_key',
+      {
+        key: updateInfoData.selected.id,
+        ...data,
+      },
+    ).then((data) => {
+      if (data.status !== 200) {
+        Swal.fire({ icon: 'error', text: data.message || data.error })
+        return
+      }
+
+      eTable.requestRender()
+      Swal.fire({ icon: 'success', text: `Success update api key ${updateInfoData.selected.name}` }).then(() => {
+        updateInfoDOMs.modal.hide()
+      })
+    })
+  })
+
+  /**
+   * COPY
+   * */
+
+  const onCopyKey = (e) => {
+    IMYR.copyClipboard(e.target.dataset.info)
+    toastr.success(`copied`)
+  }
+
+  /**
+   * END
+   * */
+
+})
+</script>
+{% endblock %}

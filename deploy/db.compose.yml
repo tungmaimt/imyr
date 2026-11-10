@@ -1,0 +1,14 @@
+services:
+  mongo:
+    image: mongo:8.2.3-noble
+    restart: always
+    user: root
+    command: --config /etc/mongo/mongod.conf
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: tungmai
+      MONGO_INITDB_ROOT_PASSWORD: tungmai
+    ports:
+      - 27017:27017
+    volumes:
+      - .:/etc/mongo
+      - ./data:/data/db

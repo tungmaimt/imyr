@@ -1,0 +1,92 @@
+.user-avatar {
+  width: 2.1rem;
+  height: 2.1rem;
+  background-color: #b94321;
+  border-radius: 50%;
+  text-align: center;
+  font-size: 2rem;
+  line-height: 2rem;
+  color: white;
+}
+
+.nav-treeview>.nav-item>.nav-link {
+  padding-left: 2rem;
+}
+
+.etable th.sorting {
+  cursor: pointer;
+  position: relative;
+  padding-right: 1.875rem;
+}
+
+.etable th.sorting::before,
+.etable th.sorting::after {
+  position: absolute;
+  opacity: .5;
+}
+
+.etable th.sorting::before {
+  right: 1em;
+  content: "↑";
+}
+.etable th.sorting::after {
+  right: 0.5em;
+  content: "↓";
+}
+
+.etable th.sorting.asc::before {
+  opacity: 1;
+}
+.etable th.sorting.desc::after {
+  opacity: 1;
+}
+
+.required:after {
+  content:" *";
+  color: red;
+}
+
+.badge-indigo{
+  color: #fff;
+  background-color: #6610f2;
+}
+.badge-lightblue{
+  color: #fff;
+  background-color: #3c8dbc;
+}
+.badge-navy{
+  color: #fff;
+  background-color: #001f3f;
+}
+.badge-purple{
+  color: #fff;
+  background-color: #605ca8;
+}
+.badge-fuchsia{
+  color: #fff;
+  background-color: #f012be;
+}
+.badge-pink{
+  color: #fff;
+  background-color: #e83e8c;
+}
+.badge-maroon{
+  color: #fff;
+  background-color: #d81b60;
+}
+.badge-orange{
+  color: #1f2d3d;
+  background-color: #ff851b;
+}
+.badge-lime{
+  color: #1f2d3d;
+  background-color: #01ff70;
+}
+.badge-teal{
+  color: #fff;
+  background-color: #39cccc;
+}
+.badge-olive{
+  color: #fff;
+  background-color: #3d9970;
+}
