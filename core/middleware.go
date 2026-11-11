@@ -1,7 +1,6 @@
 package core
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
@@ -9,7 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type AfterHandler = func(context.Context, fiber.Map)
+// type AfterHandler = func(context.Context, fiber.Map)
 
 // Define ANSI color codes
 const (
