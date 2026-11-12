@@ -6,7 +6,8 @@ import (
 
 func Router(app fiber.Router, api fiber.Router) {
 	// views
-	// group := app.Group("/auth")
+	group := app.Group("/user")
+	profileView.Register(group)
 
 	// group.Get("/login", loginView())
 	// group.Get("/register", registerView())

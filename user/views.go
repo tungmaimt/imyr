@@ -10,10 +10,12 @@ import (
 )
 
 var profileView = core.View{
-	Path:            "/",
-	Html:            "user/profile",
-	Auth:            auth.RequireAuthenView(""),
-	GetUserBindData: auth.GetUserBindData,
+	Path:              "/",
+	Html:              "auth/user",
+	Auth:              auth.RequireAuthenView(""),
+	GetUserBindData:   auth.GetUserBindData,
+	GetBindData:       func(c *fiber.Ctx) fiber.Map { return fiber.Map{"from_server": "this for render from server"} },
+	GetClientBindData: func(c *fiber.Ctx) fiber.Map { return fiber.Map{"for_client": "this for access from js"} },
 	ActionHander: map[string]core.ActionHandler{
 		"get__profile": getProfile,
 	},

@@ -18,6 +18,8 @@ Manager User
   </button>
 </div>
 
+<h3>{{ from_server }}</h3>
+
 <div class="mt-3 card">
   <div class="card-header">User list</div>
   <div class="card-body">
@@ -174,6 +176,9 @@ Manager User
 document.addEventListener('DOMContentLoaded', () => {
   const IMYR = window.IMYR
   const tableDOM = document.getElementById('tableUser')
+  const clientData = IMYR.clientData || {}
+
+  alert(`this from client data ${clientData.for_client}`)
 
   if (IMYR.user.role !== 'admin') {
     document.getElementById('blockInputRole').classList.add('d-none')
