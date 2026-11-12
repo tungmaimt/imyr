@@ -13,31 +13,31 @@
   padding-left: 2rem;
 }
 
-.etable th.sorting {
+.ytable th.sorting {
   cursor: pointer;
   position: relative;
   padding-right: 1.875rem;
 }
 
-.etable th.sorting::before,
-.etable th.sorting::after {
+.ytable th.sorting::before,
+.ytable th.sorting::after {
   position: absolute;
   opacity: .5;
 }
 
-.etable th.sorting::before {
+.ytable th.sorting::before {
   right: 1em;
   content: "↑";
 }
-.etable th.sorting::after {
+.ytable th.sorting::after {
   right: 0.5em;
   content: "↓";
 }
 
-.etable th.sorting.asc::before {
+.ytable th.sorting.asc::before {
   opacity: 1;
 }
-.etable th.sorting.desc::after {
+.ytable th.sorting.desc::after {
   opacity: 1;
 }
 

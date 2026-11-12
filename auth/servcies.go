@@ -212,14 +212,13 @@ func RequireAuthenView(redirect string) fiber.Handler {
 
 func RequireAuthorApi(roles []string) fiber.Handler {
 	return authen(func(c *fiber.Ctx) error {
-		if c.Locals(UserKey) == nil {
+		user := GetUserFromCtx(c)
+		if user == nil {
 			return c.Status(401).JSON(fiber.Map{
 				"status":  401,
 				"message": "Unauthentication",
 			})
 		}
-
-		user := c.Locals(UserKey).(UserModel)
 
 		if !slices.Contains(roles, user.Role) {
 			return c.Status(403).JSON(fiber.Map{
@@ -246,11 +245,10 @@ func RequireAuthorApi(roles []string) fiber.Handler {
 
 func RequireAuthorView(roles []string) fiber.Handler {
 	return authen(func(c *fiber.Ctx) error {
-		if c.Locals(UserKey) == nil {
+		user := GetUserFromCtx(c)
+		if user == nil {
 			return c.Redirect(fmt.Sprintf("/auth/login?next=%s", url.QueryEscape(c.OriginalURL())))
 		}
-
-		user := c.Locals(UserKey).(UserModel)
 
 		if !slices.Contains(roles, user.Role) {
 			return c.Render("auth/403.html", core.GetBindData(GetUserBindData(c)))

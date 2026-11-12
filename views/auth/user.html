@@ -22,7 +22,7 @@ Manager User
   <div class="card-header">User list</div>
   <div class="card-body">
     <div class="table-responsive">
-      <table class="table table-striped table-hover table-borderless align-middle etable" id="tableUser">
+      <table class="table table-striped table-hover table-borderless align-middle ytable" id="tableUser">
         <thead>
         </thead>
         <tbody class="table-group-divider">
@@ -240,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
   ]
 
-  const eTable = IMYR.eTable(tableDOM, {
+  const yTable = IMYR.yTable(tableDOM, {
     cols: colsConfig,
     limit: 10,
     sortDir: 'asc',
@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       Swal.fire({ icon: 'success', text: 'New user added' }).then(() => {
-        eTable.requestRender()
+        yTable.requestRender()
         newUserDOMs.modal.hide()
       })
     })
@@ -397,7 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const onUpdateInfo = (e) => {
-    updateInfoData.selected = eTable.tData.data.find(({ id }) => id === parseInt(e.target.dataset.info))
+    updateInfoData.selected = yTable.tData.data.find(({ id }) => id === parseInt(e.target.dataset.info))
 
     if (!updateInfoData.selected) {
       return
@@ -442,7 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return
       }
 
-      eTable.requestRender()
+      yTable.requestRender()
       Swal.fire({ icon: 'success', text: `Success update user ${updateInfoData.selected.username}` }).then(() => {
         updateInfoDOMs.modal.hide()
       })

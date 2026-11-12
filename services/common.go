@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"proj/imyr/db"
 	"reflect"
 	"slices"
 	"strconv"
@@ -200,4 +201,25 @@ func FilterFromQueryString(queries []string) map[string]any {
 	}
 
 	return filter
+}
+
+func GetMapValue[K comparable, T any](m map[K]any, key K, defaultVal T) T {
+	if rawVal, exists := m[key]; exists {
+		if val, ok := rawVal.(T); ok {
+			return val
+		}
+	}
+	return defaultVal
+}
+
+func MakeSortQueryOps(ops []db.FindOption, sortField string, sortDir string) []db.FindOption {
+	if sortField == "" {
+		return ops
+	}
+	dir := -1
+	if sortDir == "asc" {
+		dir = 1
+	}
+
+	return append(ops, db.UseSort([]string{sortField}, []int{dir}))
 }

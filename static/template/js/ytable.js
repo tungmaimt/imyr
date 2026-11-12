@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const MAX_PAGE_VIEW = 6
 
-  IMYR.eTable = (tableDOM, ops) => {
+  IMYR.yTable = (tableDOM, ops) => {
     /**
      * ops:
      * ops.cols = [{ label: string, sortField: string, render: (rowData) => string }]
@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // INIT
 
-    tableDOM.classList.add('etable')
+    tableDOM.classList.add('ytable')
     configDOMs.caption.innerHTML = 'No data'
 
     configDOMs.thead.innerHTML = `
