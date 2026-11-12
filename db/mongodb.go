@@ -25,59 +25,67 @@ func (e *MultiDbError) Error() string {
 }
 
 type option func() (string, any)
+type FindOption func() (string, any)
 
 const OPTION_SKIP string = "OPTION_SKIP"
 const OPTION_LIMIT string = "OPTION_LIMIT"
-const OPTION_PROFILE string = "OPTION_PROFILE"
+const OPTION_PROJECTION string = "OPTION_PROJECTION"
 const OPTION_SORT string = "OPTION_SORTT"
 const OPTION_AGGREGATE string = "OPTION_AGGREGATE"
 
-func UseSkip(offset int) option {
+func UseSkip(offset int) FindOption {
 	return func() (string, any) {
-		return OPTION_SKIP, offset
+		return OPTION_SKIP, int64(offset)
 	}
 }
 
-func UseLimit(limit int) option {
+func UseLimit(limit int) FindOption {
 	return func() (string, any) {
-		return OPTION_LIMIT, limit
+		return OPTION_LIMIT, int64(limit)
 	}
 }
 
-func UseProfile(fields []string) option {
+func UseProjection(fields []string, isIncludes []int) FindOption {
+	data := bson.D{}
+
+	for i, f := range fields {
+		data = append(data, bson.E{Key: f, Value: isIncludes[i]})
+	}
+
 	return func() (string, any) {
-		return OPTION_PROFILE, fields
+		return OPTION_PROJECTION, data
 	}
 }
 
-func UseSort(fields []string) option {
+func UseSort(fields []string, dirs []int) FindOption {
+	data := bson.D{}
+
+	for i, f := range fields {
+		data = append(data, bson.E{Key: f, Value: dirs[i]})
+	}
+
 	return func() (string, any) {
-		return OPTION_SORT, fields
+		return OPTION_SORT, data
 	}
 }
 
-func UseAggregate(steps any) option {
-	return func() (string, any) {
-		return OPTION_AGGREGATE, steps
-	}
-}
-
-func useOptions(ops ...option) any {
-	queryOps := make(map[string]any)
+func useFindOptions(ops ...FindOption) *options.FindOptionsBuilder {
+	// queryOps := make(map[string]any)
+	queryOps := options.Find()
 
 	for _, op := range ops {
 		optName, optData := op()
 		switch optName {
 		case OPTION_SKIP:
-			queryOps["skip"] = optData
+			skip := optData.(int64)
+			queryOps = queryOps.SetSkip(skip)
 		case OPTION_LIMIT:
-			queryOps["limit"] = optData
-		case OPTION_PROFILE:
-			queryOps["profile"] = optData
+			limit := optData.(int64)
+			queryOps = queryOps.SetLimit(limit)
+		case OPTION_PROJECTION:
+			queryOps = queryOps.SetProjection(optData)
 		case OPTION_SORT:
-			queryOps["sort"] = optData
-		case OPTION_AGGREGATE:
-			queryOps["aggregate"] = optData
+			queryOps = queryOps.SetSort(optData)
 		}
 	}
 
@@ -104,7 +112,7 @@ func AddIndex[T Model](key string, direction int, option *options.IndexOptionsBu
 			indexs: []mongo.IndexModel{},
 		})
 
-		index = 0
+		index = len(indexCfgs) - 1
 	}
 
 	indexCfgs[index].indexs = append(indexCfgs[index].indexs, mongo.IndexModel{
@@ -119,7 +127,7 @@ func AddIndex[T Model](key string, direction int, option *options.IndexOptionsBu
 
 func CreateIndex() (err error) {
 	for _, indexConfig := range indexCfgs {
-		fmt.Println("create index with ", len(indexConfig.indexs))
+		fmt.Println("create index with ", indexConfig.ins.GetCollectionName(), len(indexConfig.indexs))
 		getCollection(indexConfig.ins.GetCollectionName(), indexConfig.ins.GetDbName(), func(c *mongo.Collection) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -215,11 +223,11 @@ func InsertMany[T Model](docs []T, ops ...option) (results []mongo.InsertManyRes
 	return
 }
 
-func Find[T Model](filter map[string]any, ops ...option) (docs []T, err error) {
+func Find[T Model](filter map[string]any, ops ...FindOption) (docs []T, err error) {
 	var docIns T
 
 	getCollection(docIns.GetCollectionName(), docIns.GetDbName(), func(c *mongo.Collection) {
-		curs, e := c.Find(context.TODO(), filter)
+		curs, e := c.Find(context.TODO(), filter, useFindOptions(ops...))
 		if e != nil {
 			err = e
 			return
@@ -276,6 +284,15 @@ func DeleteMany[T Model](filter map[string]any, ops ...option) (result *mongo.De
 
 	getCollection(doc.GetCollectionName(), doc.GetDbName(), func(c *mongo.Collection) {
 		result, err = c.DeleteMany(context.TODO(), filter)
+	})
+
+	return
+}
+
+func Count[T Model](filter map[string]any) (result int64, err error) {
+	var doc T
+	getCollection(doc.GetCollectionName(), doc.GetDbName(), func(c *mongo.Collection) {
+		result, err = c.CountDocuments(context.TODO(), filter)
 	})
 
 	return
