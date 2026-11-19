@@ -35,11 +35,15 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 					Auth:        auth,
 					Middlewares: middlewares,
 					Handler: func(c *fiber.Ctx) error {
+						ctx := c.Context()
 						objId, _ := bson.ObjectIDFromHex(c.Params("id"))
 
-						doc, err := db.FindOne[T](map[string]any{
-							"_id": objId,
-						})
+						doc, err := db.FindOne[T](
+							ctx, map[string]any{
+								"_id": objId,
+							},
+							nil,
+						)
 
 						if err == mongo.ErrNoDocuments {
 							return c.JSON(fiber.Map{
@@ -67,6 +71,7 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 					Auth:        auth,
 					Middlewares: middlewares,
 					Handler: func(c *fiber.Ctx) error {
+						ctx := c.Context()
 						filter := make(map[string]any)
 						filterStr := new(Filter)
 						err := c.QueryParser(filterStr)
@@ -78,7 +83,7 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 							filter = config.FilterFromQueryString(filterStr.Filters)
 						}
 
-						docs, err := db.Find[T](filter)
+						docs, err := db.Find[T](ctx, filter, nil)
 
 						if err != nil {
 							fmt.Println("restfull RestFUL db.Find err", err)
@@ -108,6 +113,7 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 				Auth:        auth,
 				Middlewares: middlewares,
 				Handler: func(c *fiber.Ctx) error {
+					ctx := c.Context()
 					var d map[string]any
 
 					if err := json.Unmarshal(c.Body(), &d); err != nil {
@@ -134,7 +140,7 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 						})
 					}
 
-					result, err := db.InsertOne(*ins)
+					result, err := db.InsertOne(ctx, *ins, nil)
 
 					if err != nil {
 						return c.Status(400).JSON(fiber.Map{
@@ -143,7 +149,7 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 						})
 					}
 
-					if result.Acknowledged != true {
+					if result == nil {
 						fmt.Println(err, result, "Error create with restful", c.OriginalURL())
 						return c.Status(500).JSON(fiber.Map{
 							"status":  500,
@@ -153,7 +159,7 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 
 					return c.JSON(fiber.Map{
 						"status": 200,
-						"data":   result.InsertedID,
+						"data":   result,
 					})
 				},
 			})
@@ -164,6 +170,7 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 				Auth:        auth,
 				Middlewares: middlewares,
 				Handler: func(c *fiber.Ctx) error {
+					ctx := c.Context()
 					var d map[string]any
 
 					objId, err := bson.ObjectIDFromHex(c.Params("id"))
@@ -179,7 +186,7 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 
 					fmt.Print(c.Params("id"), "--restful--", d)
 
-					result, err := db.UpdateOne[T](map[string]any{"_id": objId}, map[string]any{"$set": d})
+					result, err := db.UpdateOne[T](ctx, map[string]any{"_id": objId}, map[string]any{"$set": d}, nil)
 
 					if err != nil {
 						return c.Status(400).JSON(fiber.Map{
@@ -188,17 +195,9 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 						})
 					}
 
-					if result.Acknowledged != true {
-						fmt.Println(err, result, "Error update with restful", c.OriginalURL())
-						return c.Status(500).JSON(fiber.Map{
-							"status":  500,
-							"message": fmt.Sprintf("update unsuccessful for api %s", path),
-						})
-					}
-
 					return c.JSON(fiber.Map{
 						"status": 200,
-						"data":   result.ModifiedCount,
+						"data":   result,
 					})
 				},
 			})
@@ -209,11 +208,14 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 				Auth:        auth,
 				Middlewares: middlewares,
 				Handler: func(c *fiber.Ctx) error {
+					ctx := c.Context()
 					objId, err := bson.ObjectIDFromHex(c.Params("id"))
 
 					result, err := db.UpdateOne[T](
+						ctx,
 						map[string]any{"_id": objId},
 						map[string]any{"$set": map[string]any{"status": config.STATUS_DELETED}},
+						nil,
 					)
 
 					if err != nil {
@@ -223,17 +225,9 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 						})
 					}
 
-					if result.Acknowledged != true {
-						fmt.Println(err, result, "Error delete with restful", c.OriginalURL())
-						return c.Status(500).JSON(fiber.Map{
-							"status":  500,
-							"message": fmt.Sprintf("delete unsuccessful for api %s", path),
-						})
-					}
-
 					return c.JSON(fiber.Map{
 						"status": 200,
-						"data":   result.ModifiedCount,
+						"data":   result,
 					})
 				},
 			})

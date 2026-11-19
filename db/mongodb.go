@@ -3,178 +3,18 @@ package db
 import (
 	"context"
 	"fmt"
-	"slices"
-	"time"
-
 	"proj/imyr/config"
+	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-type Model interface {
-	GetCollectionName() string
-	GetDbName() string
-}
+func getCollection(parent context.Context, coll string, dbName string, fn func(context.Context, *mongo.Collection)) {
+	ctx, cancel := context.WithTimeout(parent, 10*time.Second)
+	defer cancel()
 
-type MultiDbError struct{}
-
-func (e *MultiDbError) Error() string {
-	return "mongodb: multi database, should use only 1 database for each query"
-}
-
-type option func() (string, any)
-type FindOption func() (string, any)
-
-const OPTION_SKIP string = "OPTION_SKIP"
-const OPTION_LIMIT string = "OPTION_LIMIT"
-const OPTION_PROJECTION string = "OPTION_PROJECTION"
-const OPTION_SORT string = "OPTION_SORTT"
-const OPTION_AGGREGATE string = "OPTION_AGGREGATE"
-
-func UseSkip(offset int) FindOption {
-	return func() (string, any) {
-		return OPTION_SKIP, int64(offset)
-	}
-}
-
-func UseLimit(limit int) FindOption {
-	return func() (string, any) {
-		return OPTION_LIMIT, int64(limit)
-	}
-}
-
-func UseProjection(fields []string, isIncludes []int) FindOption {
-	data := bson.D{}
-
-	for i, f := range fields {
-		data = append(data, bson.E{Key: f, Value: isIncludes[i]})
-	}
-
-	return func() (string, any) {
-		return OPTION_PROJECTION, data
-	}
-}
-
-func UseSort(fields []string, dirs []int) FindOption {
-	data := bson.D{}
-
-	for i, f := range fields {
-		data = append(data, bson.E{Key: f, Value: dirs[i]})
-	}
-
-	return func() (string, any) {
-		return OPTION_SORT, data
-	}
-}
-
-func useFindOptions(ops ...FindOption) *options.FindOptionsBuilder {
-	// queryOps := make(map[string]any)
-	queryOps := options.Find()
-
-	for _, op := range ops {
-		optName, optData := op()
-		switch optName {
-		case OPTION_SKIP:
-			skip := optData.(int64)
-			queryOps = queryOps.SetSkip(skip)
-		case OPTION_LIMIT:
-			limit := optData.(int64)
-			queryOps = queryOps.SetLimit(limit)
-		case OPTION_PROJECTION:
-			queryOps = queryOps.SetProjection(optData)
-		case OPTION_SORT:
-			queryOps = queryOps.SetSort(optData)
-		}
-	}
-
-	return queryOps
-}
-
-type IndexConfig struct {
-	ins    Model
-	indexs []mongo.IndexModel
-}
-
-var indexCfgs = []IndexConfig{}
-
-func AddIndex[T Model](key string, direction int, option *options.IndexOptionsBuilder) (index1 int, index2 int) {
-	var ins T
-
-	index := slices.IndexFunc(indexCfgs, func(ic IndexConfig) bool {
-		return ins.GetCollectionName() == ic.ins.GetCollectionName() && ins.GetDbName() == ic.ins.GetDbName()
-	})
-
-	if index == -1 {
-		indexCfgs = append(indexCfgs, IndexConfig{
-			ins:    ins,
-			indexs: []mongo.IndexModel{},
-		})
-
-		index = len(indexCfgs) - 1
-	}
-
-	indexCfgs[index].indexs = append(indexCfgs[index].indexs, mongo.IndexModel{
-		Keys:    bson.D{{Key: key, Value: direction}},
-		Options: option,
-	})
-
-	fmt.Printf("add index for %s: %s - %d %d\n", ins.GetCollectionName(), key, index, len(indexCfgs[index].indexs))
-
-	return index, len(indexCfgs[index].indexs) - 1
-}
-
-func CreateIndex() (err error) {
-	for _, indexConfig := range indexCfgs {
-		fmt.Println("create index with ", indexConfig.ins.GetCollectionName(), len(indexConfig.indexs))
-		getCollection(indexConfig.ins.GetCollectionName(), indexConfig.ins.GetDbName(), func(c *mongo.Collection) {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
-
-			names, cerr := c.Indexes().CreateMany(ctx, indexConfig.indexs)
-			err = cerr
-
-			if err != nil {
-				fmt.Print(err)
-				return
-			}
-
-			fmt.Printf("Create index for %s: %v\n", indexConfig.ins.GetCollectionName(), names)
-		})
-	}
-
-	return
-}
-
-func init() {
-	fmt.Println("Mongo")
-
-	client, err := mongo.Connect(
-		options.Client().ApplyURI(config.DB_URL),
-	)
-
-	if err != nil {
-		panic(err)
-	}
-
-	defer func() {
-		if err := client.Disconnect(context.TODO()); err != nil {
-			panic(err)
-		}
-	}()
-
-	var result bson.M
-	if err := client.Database("admin").RunCommand(
-		context.TODO(),
-		bson.D{{Key: "ping", Value: 1}},
-	).Decode(&result); err != nil {
-		panic(err)
-	}
-	fmt.Println("Pinged your deployment. You successfully connected to MongoDB!")
-}
-
-func getCollection(coll string, dbName string, fn func(*mongo.Collection)) {
 	if coll == "" {
 		panic("mongodb: no coll")
 	}
@@ -192,7 +32,7 @@ func getCollection(coll string, dbName string, fn func(*mongo.Collection)) {
 	}
 
 	defer func() {
-		if err := client.Disconnect(context.TODO()); err != nil {
+		if err := client.Disconnect(ctx); err != nil {
 			panic(err)
 		}
 	}()
@@ -200,100 +40,238 @@ func getCollection(coll string, dbName string, fn func(*mongo.Collection)) {
 	database := client.Database(dbName)
 	collection := database.Collection(coll)
 
-	fn(collection)
+	fn(ctx, collection)
 }
 
-func InsertOne[T Model](doc T, ops ...option) (result *mongo.InsertOneResult, err error) {
-	getCollection(doc.GetCollectionName(), doc.GetDbName(), func(c *mongo.Collection) {
-		result, err = c.InsertOne(context.TODO(), doc)
-	})
+type mongoIndexOption struct {
+	Builder   *options.IndexOptionsBuilder
+	TextIndex bool
+	GeoIndex  bool
+}
+
+func (m *mongoIndexOption) Unique(unique bool) {
+	m.Builder = m.Builder.SetUnique(unique)
+}
+
+func (m *mongoIndexOption) Sparse(sparse bool) {
+	m.Builder = m.Builder.SetSparse(sparse)
+}
+
+func (m *mongoIndexOption) Text(text bool) {
+	m.TextIndex = text
+}
+
+func (m *mongoIndexOption) Geo(geo bool) {
+	m.GeoIndex = geo
+}
+
+func convertIndexs(indexs []IndexModel) []mongo.IndexModel {
+	data := []mongo.IndexModel{}
+
+	for _, index := range indexs {
+		keys := bson.D{}
+
+		mongoIndexOpt := &mongoIndexOption{Builder: &options.IndexOptionsBuilder{}}
+
+		if index.Option != nil {
+			for _, optFunc := range index.Option.Opts {
+				optFunc(mongoIndexOpt)
+			}
+		}
+
+		for i, k := range index.Keys {
+			var val any = index.Dirs[i]
+			if mongoIndexOpt.TextIndex {
+				val = "text"
+			} else if mongoIndexOpt.GeoIndex {
+				val = "2d"
+			} else if val != 1 && val != -1 {
+				val = -1
+			}
+
+			keys = append(keys, bson.E{Key: k, Value: val})
+		}
+
+		data = append(data, mongo.IndexModel{
+			Keys:    keys,
+			Options: mongoIndexOpt.Builder,
+		})
+	}
+
+	return data
+}
+
+type mongoFindOption struct {
+	Builder *options.FindOptionsBuilder
+}
+
+func (m *mongoFindOption) Skip(offset int) {
+	m.Builder = m.Builder.SetSkip(int64(offset))
+}
+
+func (m *mongoFindOption) Limit(limit int) {
+	m.Builder = m.Builder.SetLimit(int64(limit))
+}
+
+func (m *mongoFindOption) Projection(projection map[string]int) {
+	data := bson.D{}
+	for k, v := range projection {
+		data = append(data, bson.E{
+			Key:   k,
+			Value: v,
+		})
+	}
+
+	m.Builder = m.Builder.SetProjection(data)
+}
+
+func (m *mongoFindOption) Sort(sort map[string]int) {
+	data := bson.D{}
+	for k, v := range sort {
+		data = append(data, bson.E{
+			Key:   k,
+			Value: v,
+		})
+	}
+
+	m.Builder = m.Builder.SetSort(data)
+}
+
+func convertFindOptions(opt *FindOptionBuilder) *options.FindOptionsBuilder {
+	mongoFindOpt := &mongoFindOption{Builder: &options.FindOptionsBuilder{}}
+
+	if opt != nil {
+		for _, optFunc := range opt.Opts {
+			optFunc(mongoFindOpt)
+		}
+	}
+
+	return mongoFindOpt.Builder
+}
+
+type mongoRepo[T Model] struct {
+}
+
+func (mongoRepo[T]) CreateIndex(parent context.Context, indexs []IndexModel, ins Model) (err error) {
+	fmt.Println("create index with ", ins.GetCollectionName(), len(indexs))
+	getCollection(
+		parent,
+		ins.GetCollectionName(),
+		ins.GetDbName(),
+		func(ctx context.Context, c *mongo.Collection) {
+			names, cerr := c.Indexes().CreateMany(ctx, convertIndexs(indexs))
+			err = cerr
+
+			if err != nil {
+				fmt.Print(err)
+				return
+			}
+
+			fmt.Printf("Create index for %s: %v\n", ins.GetCollectionName(), names)
+		},
+	)
 
 	return
 }
 
-func InsertMany[T Model](docs []T, ops ...option) (results []mongo.InsertManyResult, err error) {
-	var doc T
+func (mongoRepo[T]) InsertOne(parent context.Context, coll string, dbname string, doc T, opt *OptionBuilder) (any, error) {
+	var result *mongo.InsertOneResult
+	var err error
 
-	getCollection(doc.GetCollectionName(), doc.GetDbName(), func(c *mongo.Collection) {
-		result, cErr := c.InsertMany(context.TODO(), docs)
-		err = cErr
-		results = append(results, *result)
+	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
+		result, err = c.InsertOne(ctx, doc)
 	})
 
-	return
+	return result.InsertedID, err
 }
 
-func Find[T Model](filter map[string]any, ops ...FindOption) (docs []T, err error) {
-	var docIns T
+func (mongoRepo[T]) InsertMany(parent context.Context, coll string, dbname string, docs []T, opt *OptionBuilder) ([]any, error) {
+	var result *mongo.InsertManyResult
+	var err error
 
-	getCollection(docIns.GetCollectionName(), docIns.GetDbName(), func(c *mongo.Collection) {
-		curs, e := c.Find(context.TODO(), filter, useFindOptions(ops...))
-		if e != nil {
-			err = e
+	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
+		result, err = c.InsertMany(ctx, docs)
+	})
+
+	return result.InsertedIDs, err
+}
+
+func (mongoRepo[T]) Find(parent context.Context, coll string, dbname string, docs []T, filter map[string]any, opt *FindOptionBuilder) ([]T, error) {
+	var err error
+	var val []T
+
+	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
+		curs, err := c.Find(ctx, filter, convertFindOptions(opt))
+		if err != nil {
 			return
 		}
-		err = curs.All(context.TODO(), &docs)
+		err = curs.All(ctx, &val)
 	})
 
-	return
+	return val, err
 }
 
-func FindOne[T Model](filter map[string]any, ops ...option) (result *T, err error) {
-	var doc T
+func (mongoRepo[T]) FindOne(parent context.Context, coll string, dbname string, doc *T, filter map[string]any, opt *OptionBuilder) (*T, error) {
+	var err error
+	var val T
 
-	getCollection(doc.GetCollectionName(), doc.GetDbName(), func(c *mongo.Collection) {
-		err = c.FindOne(context.TODO(), filter).Decode(&doc)
-		result = &doc
+	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
+		err = c.FindOne(ctx, filter).Decode(&val)
 	})
 
-	return
+	return &val, err
 }
 
-func UpdateOne[T Model](filter map[string]any, update map[string]any, ops ...option) (result *mongo.UpdateResult, err error) {
-	var doc T
+func (mongoRepo[T]) UpdateOne(parent context.Context, coll string, dbname string, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error) {
+	var result *mongo.UpdateResult
+	var err error
 
-	getCollection(doc.GetCollectionName(), doc.GetDbName(), func(c *mongo.Collection) {
-		result, err = c.UpdateOne(context.TODO(), filter, update)
+	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
+		result, err = c.UpdateOne(ctx, filter, update)
 	})
 
-	return
+	return result.ModifiedCount, err
 }
 
-func UpdateMany[T Model](filter map[string]any, update map[string]any, ops ...option) (result *mongo.UpdateResult, err error) {
-	var doc T
+func (mongoRepo[T]) UpdateMany(parent context.Context, coll string, dbname string, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error) {
+	var result *mongo.UpdateResult
+	var err error
 
-	getCollection(doc.GetCollectionName(), doc.GetDbName(), func(c *mongo.Collection) {
-		result, err = c.UpdateMany(context.TODO(), filter, update)
+	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
+		result, err = c.UpdateMany(ctx, filter, update)
 	})
 
-	return
+	return result.ModifiedCount, err
 }
 
-func DeleteOne[T Model](filter map[string]any, ops ...option) (result *mongo.DeleteResult, err error) {
-	var doc T
+func (mongoRepo[T]) DeleteOne(parent context.Context, coll string, dbname string, filter map[string]any, opt *OptionBuilder) (int64, error) {
+	var result *mongo.DeleteResult
+	var err error
 
-	getCollection(doc.GetCollectionName(), doc.GetDbName(), func(c *mongo.Collection) {
-		result, err = c.DeleteOne(context.TODO(), filter)
+	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
+		result, err = c.DeleteOne(ctx, filter)
 	})
 
-	return
+	return result.DeletedCount, err
 }
 
-func DeleteMany[T Model](filter map[string]any, ops ...option) (result *mongo.DeleteResult, err error) {
-	var doc T
+func (mongoRepo[T]) DeleteMany(parent context.Context, coll string, dbname string, filter map[string]any, opt *OptionBuilder) (int64, error) {
+	var result *mongo.DeleteResult
+	var err error
 
-	getCollection(doc.GetCollectionName(), doc.GetDbName(), func(c *mongo.Collection) {
-		result, err = c.DeleteMany(context.TODO(), filter)
+	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
+		result, err = c.DeleteMany(ctx, filter)
 	})
 
-	return
+	return result.DeletedCount, err
 }
 
-func Count[T Model](filter map[string]any) (result int64, err error) {
-	var doc T
-	getCollection(doc.GetCollectionName(), doc.GetDbName(), func(c *mongo.Collection) {
-		result, err = c.CountDocuments(context.TODO(), filter)
+func (mongoRepo[T]) Count(parent context.Context, coll string, dbname string, filter map[string]any) (int64, error) {
+	var result int64
+	var err error
+	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
+		result, err = c.CountDocuments(ctx, filter)
 	})
 
-	return
+	return result, err
 }

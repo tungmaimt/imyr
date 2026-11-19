@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -24,7 +25,7 @@ func hashPass(pw string) (hp string) {
 	return
 }
 
-func checkToken(s string) (*UserModel, error) {
+func checkToken(ctx context.Context, s string) (*UserModel, error) {
 	var user *UserModel
 	data, err := validate(s)
 
@@ -38,7 +39,7 @@ func checkToken(s string) (*UserModel, error) {
 		return user, newAuthError(AuthErrorInvalidUser, "Invalid yid")
 	}
 
-	user, err = db.FindOne[UserModel](map[string]any{"_id": obid})
+	user, err = db.FindOne[UserModel](ctx, map[string]any{"_id": obid}, nil)
 
 	if err == mongo.ErrNoDocuments {
 		return user, newAuthError(AuthErrorNoUser, "No user")
@@ -49,13 +50,14 @@ func checkToken(s string) (*UserModel, error) {
 
 func authen(handler fiber.Handler) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		ctx := c.Context()
 		token := c.Get("Ytoken")
 
 		if token == "" {
 			token = c.Cookies("Ytoken")
 		}
 
-		user, err := checkToken(token)
+		user, err := checkToken(ctx, token)
 
 		if err == nil {
 			if user.Role == ROLE_BANNED {
@@ -77,13 +79,13 @@ func authen(handler fiber.Handler) fiber.Handler {
 
 // View & Api use
 // fiber.Hander = func(*fiber.Ctx) error
-// ...ops = reidrect string || roles []string
-// ops
+// ...opt = reidrect string || roles []string
+// opt
 
-// func OptionAuthenApi(handler func(*fiber.Ctx) error, ops *core.AuthOps) fiber.Handler {
+// func OptionAuthenApi(handler func(*fiber.Ctx) error, opt *core.AuthOps) fiber.Handler {
 // 	return authen(func(c *fiber.Ctx) error {
 // 		return handler(c)
-// 	}, ops)
+// 	}, opt)
 // }
 
 func OptionAuthenApi() fiber.Handler {
@@ -92,10 +94,10 @@ func OptionAuthenApi() fiber.Handler {
 	})
 }
 
-// func OptionAuthenView(handler fiber.Handler, ops *core.AuthOps) fiber.Handler {
+// func OptionAuthenView(handler fiber.Handler, opt *core.AuthOps) fiber.Handler {
 // 	return authen(func(c *fiber.Ctx) error {
 // 		return handler(c)
-// 	}, ops)
+// 	}, opt)
 // }
 
 func OptionAuthenView() fiber.Handler {
@@ -104,14 +106,14 @@ func OptionAuthenView() fiber.Handler {
 	})
 }
 
-// func NoAuthApi(handler fiber.Handler, ops *core.AuthOps) fiber.Handler {
+// func NoAuthApi(handler fiber.Handler, opt *core.AuthOps) fiber.Handler {
 // 	return authen(func(c *fiber.Ctx) error {
 // 		if c.Locals(UserKey) == nil {
 // 			return fiber.NewError(400, "Notsupport")
 // 		}
 
 // 		return handler(c)
-// 	}, ops)
+// 	}, opt)
 // }
 
 func NoAuthApi(msg string) fiber.Handler {
@@ -131,14 +133,14 @@ func NoAuthApi(msg string) fiber.Handler {
 	})
 }
 
-// func NoAuthView(handler fiber.Handler, ops *core.AuthOps) fiber.Handler {
+// func NoAuthView(handler fiber.Handler, opt *core.AuthOps) fiber.Handler {
 // 	return authen(func(c *fiber.Ctx) error {
 // 		if c.Locals(UserKey) == nil {
 // 			return handler(c)
 // 		}
 
-// 		return c.Redirect(ops.Redirect)
-// 	}, ops)
+// 		return c.Redirect(opt.Redirect)
+// 	}, opt)
 // }
 
 func NoAuthView(redirect string) fiber.Handler {
@@ -151,14 +153,14 @@ func NoAuthView(redirect string) fiber.Handler {
 	})
 }
 
-// func RequireAuthenApi(handler fiber.Handler, ops *core.AuthOps) fiber.Handler {
+// func RequireAuthenApi(handler fiber.Handler, opt *core.AuthOps) fiber.Handler {
 // 	return authen(func(c *fiber.Ctx) error {
 // 		if c.Locals(UserKey) == nil {
 // 			return fiber.NewError(401, "Unauthentication")
 // 		}
 
 // 		return handler(c)
-// 	}, ops)
+// 	}, opt)
 // }
 
 func RequireAuthenApi() fiber.Handler {
@@ -174,14 +176,14 @@ func RequireAuthenApi() fiber.Handler {
 	})
 }
 
-// func RequireAuthenView(handler fiber.Handler, ops *core.AuthOps) fiber.Handler {
+// func RequireAuthenView(handler fiber.Handler, opt *core.AuthOps) fiber.Handler {
 // 	return authen(func(c *fiber.Ctx) error {
 // 		if c.Locals(UserKey) == nil {
 // 			return c.Redirect(fmt.Sprintf("/auth/login?next=%s", url.QueryEscape(c.OriginalURL())))
 // 		}
 
 // 		return handler(c)
-// 	}, ops)
+// 	}, opt)
 // }
 
 func RequireAuthenView(redirect string) fiber.Handler {
@@ -198,16 +200,16 @@ func RequireAuthenView(redirect string) fiber.Handler {
 	})
 }
 
-// func RequireAuthorApi(handler fiber.Handler, ops *core.AuthOps) fiber.Handler {
+// func RequireAuthorApi(handler fiber.Handler, opt *core.AuthOps) fiber.Handler {
 // 	return RequireAuthenApi(func(c *fiber.Ctx) error {
 // 		user := c.Locals(UserKey).(UserModel)
 
-// 		if !slices.Contains(ops.Roles, user.Role) {
+// 		if !slices.Contains(opt.Roles, user.Role) {
 // 			return fiber.NewError(403, "Unauthorization")
 // 		}
 
 // 		return handler(c)
-// 	}, ops)
+// 	}, opt)
 // }
 
 func RequireAuthorApi(roles []string) fiber.Handler {
@@ -231,16 +233,16 @@ func RequireAuthorApi(roles []string) fiber.Handler {
 	})
 }
 
-// func RequireAuthorView(handler fiber.Handler, ops *core.AuthOps) fiber.Handler {
+// func RequireAuthorView(handler fiber.Handler, opt *core.AuthOps) fiber.Handler {
 // 	return RequireAuthenView(func(c *fiber.Ctx) error {
 // 		user := c.Locals(UserKey).(UserModel)
 
-// 		if !slices.Contains(ops.Roles, user.Role) {
+// 		if !slices.Contains(opt.Roles, user.Role) {
 // 			return c.Render("auth/403.html", core.GetBindData(fiber.Map{}))
 // 		}
 
 // 		return handler(c)
-// 	}, ops)
+// 	}, opt)
 // }
 
 func RequireAuthorView(roles []string) fiber.Handler {
@@ -308,24 +310,17 @@ func GetUserBindData(c *fiber.Ctx) fiber.Map {
 
 // Db use
 
-func FindUsers(filter map[string]any) (users []UserModel, err error) {
-	users, err = db.Find[UserModel](filter)
+func FindUsers(ctx context.Context, filter map[string]any) (users []UserModel, err error) {
+	users, err = db.Find[UserModel](ctx, filter, nil)
 	return
 }
 
-func insertUsers(users []UserModel) ([]any, error) {
-	results, err := db.InsertMany(users)
-	insertedIds := []any{}
-
-	for _, result := range results {
-		for _, insertedID := range result.InsertedIDs {
-			insertedIds = append(insertedIds, insertedID)
-		}
-	}
+func insertUsers(ctx context.Context, users []UserModel) ([]any, error) {
+	insertedIds, err := db.InsertMany(ctx, users, nil)
 	return insertedIds, err
 }
 
-func CreateUser(email string, username string, password string) (result any, err error) {
+func CreateUser(ctx context.Context, email string, username string, password string) (result any, err error) {
 	doc := UserModel{
 		Email:    email,
 		Username: username,
@@ -341,7 +336,7 @@ func CreateUser(email string, username string, password string) (result any, err
 		return nil, fmt.Errorf("validate error for: %w", err)
 	}
 
-	results, err := insertUsers([]UserModel{doc})
+	results, err := insertUsers(ctx, []UserModel{doc})
 
 	return results[0], err
 }

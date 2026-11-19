@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"proj/imyr/config"
 	"proj/imyr/db"
@@ -11,11 +12,13 @@ import (
 
 func init() {
 	fmt.Println("INIT AUTH")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	admin, err := db.FindOne[UserModel](map[string]any{"username": "tungmai"})
+	admin, err := db.FindOne[UserModel](ctx, map[string]any{"username": "tungmai"}, nil)
 
 	if err == nil {
-		fmt.Println(admin.ID.Hex(), admin.Username, admin.Email, admin.Created.String(), "admin exists")
+		fmt.Println(admin.ID, admin.Username, admin.Email, admin.Created.String(), "admin exists")
 		return
 	}
 
@@ -35,9 +38,9 @@ func init() {
 		Updated:  time.Now(),
 	}
 
-	ir, err := db.InsertOne(doc)
+	ir, err := db.InsertOne(ctx, doc, nil)
 
-	if err != nil || ir.Acknowledged != true {
+	if err != nil || ir == nil {
 		fmt.Println(err, ir, "Error create user init auth")
 		return
 	}

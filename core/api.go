@@ -100,5 +100,5 @@ func (a *Api) GetNext(c *fiber.Ctx, d []any) string {
 		querySlice = append(querySlice, fmt.Sprintf("%s=%s", url.QueryEscape(k), url.QueryEscape(v)))
 	}
 
-	return fmt.Sprintf("%s?%s", c.Path, strings.Join(querySlice, "&"))
+	return fmt.Sprintf("%s?%s", c.Path(), strings.Join(querySlice, "&"))
 }

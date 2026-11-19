@@ -51,11 +51,11 @@ func logLvl(level LogLevel, s string, v ...any) {
 }
 
 func LogReq(c *fiber.Ctx) error {
-	logLvl(LevelInfo, c.OriginalURL())
+	logLvl(LevelInfo, "%s", c.OriginalURL())
 
 	body := string(c.Body())
 	if len(body) > 0 {
-		logLvl(LevelInfo, body)
+		logLvl(LevelInfo, "%s", body)
 	}
 
 	return c.Next()

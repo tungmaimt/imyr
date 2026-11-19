@@ -22,10 +22,11 @@ var loginView = core.View{
 }
 
 func actionLogin(c *fiber.Ctx, d map[string]any) error {
+	ctx := c.Context()
 	username := d["username"]
 	password := d["password"]
 
-	user, err := FindUsers(map[string]any{"username": username})
+	user, err := FindUsers(ctx, map[string]any{"username": username})
 
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
@@ -49,7 +50,7 @@ func actionLogin(c *fiber.Ctx, d map[string]any) error {
 	}
 
 	token, err := sign(jwt.MapClaims{
-		"yid": user[0].ID.Hex(),
+		"yid": user[0].ID,
 	})
 
 	cookie := new(fiber.Cookie)

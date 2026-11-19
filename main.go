@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"proj/imyr/auth"
 	"proj/imyr/bed"
 	"proj/imyr/config"
 	"proj/imyr/core"
 	"proj/imyr/db"
+	"proj/imyr/site"
 	"proj/imyr/user"
 
 	"github.com/gofiber/fiber/v2"
@@ -13,6 +15,7 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	var err error
 	/**
 	 * django/pongo2 view engine

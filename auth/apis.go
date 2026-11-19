@@ -20,6 +20,7 @@ var loginApi = core.Api{
 	Auth:        NoAuthApi("already loged in"),
 	Middlewares: []fiber.Handler{core.LogURL, core.LogReq},
 	Handler: func(c *fiber.Ctx) error {
+		ctx := c.Context()
 		var d map[string]any
 
 		if err := json.Unmarshal(c.Body(), &d); err != nil {
@@ -29,7 +30,7 @@ var loginApi = core.Api{
 			})
 		}
 
-		user, err := FindUsers(map[string]any{
+		user, err := FindUsers(ctx, map[string]any{
 			"email": d["email"],
 		})
 
@@ -56,11 +57,11 @@ var loginApi = core.Api{
 		}
 
 		token, err := sign(jwt.MapClaims{
-			"yid": user[0].ID.Hex(),
+			"yid": user[0].ID,
 		})
 
 		if err != nil {
-			fmt.Printf("error login api", err)
+			fmt.Println("error login api", err)
 			return c.JSON(fiber.Map{
 				"status": 500,
 				"name":   "Something went wrong",

@@ -3,7 +3,6 @@ package services
 import (
 	"errors"
 	"fmt"
-	"proj/imyr/db"
 	"reflect"
 	"slices"
 	"strconv"
@@ -212,14 +211,10 @@ func GetMapValue[K comparable, T any](m map[K]any, key K, defaultVal T) T {
 	return defaultVal
 }
 
-func MakeSortQueryOps(ops []db.FindOption, sortField string, sortDir string) []db.FindOption {
-	if sortField == "" {
-		return ops
-	}
+func SortDirToInt(sortDir string) int {
 	dir := -1
 	if sortDir == "asc" {
 		dir = 1
 	}
-
-	return append(ops, db.UseSort([]string{sortField}, []int{dir}))
+	return dir
 }

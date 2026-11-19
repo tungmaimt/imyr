@@ -22,6 +22,7 @@ var profileView = core.View{
 }
 
 func getProfile(c *fiber.Ctx, d map[string]any) error {
+	ctx := c.Context()
 	u := c.Locals(auth.UserKey).(auth.UserModel)
 
 	userData := fiber.Map{
@@ -33,7 +34,7 @@ func getProfile(c *fiber.Ctx, d map[string]any) error {
 		"desc":     u.Email,
 	}
 
-	profile, err := db.FindOne[ProfileModel](map[string]any{"user": u.ID})
+	profile, err := db.FindOne[ProfileModel](ctx, map[string]any{"user": u.ID}, nil)
 
 	if err == mongo.ErrNoDocuments {
 		return c.JSON(fiber.Map{
