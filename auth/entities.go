@@ -1,9 +1,11 @@
 package auth
 
 import (
+	"sync"
 	"time"
 
 	"proj/imyr/config"
+	"proj/imyr/db"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
@@ -53,3 +55,14 @@ func (UserModel) GetDbName() string {
 const ROLE_ADMIN = "admin"
 const ROLE_STAFF = "staff"
 const ROLE_BANNED = "banned"
+
+var repo db.Repo2[UserModel]
+var once = sync.Once{}
+
+func GetUserRepo() db.Repo2[UserModel] {
+	once.Do(func() {
+		repo = db.GetRepo[UserModel]()
+	})
+
+	return repo
+}

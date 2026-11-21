@@ -275,3 +275,28 @@ func (mongoRepo[T]) Count(parent context.Context, coll string, dbname string, fi
 
 	return result, err
 }
+
+type mongoRepo2[T Model] struct {
+}
+
+func (m mongoRepo2[T]) InsertOne(parent context.Context, doc T, opt *OptionBuilder) (any, error) {
+	var result *mongo.InsertOneResult
+	var err error
+
+	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
+		result, err = c.InsertOne(ctx, doc)
+	})
+
+	return result.InsertedID, err
+}
+
+func (m mongoRepo2[T]) FindOne(parent context.Context, filter map[string]any, opt *OptionBuilder) (*T, error) {
+	var err error
+	var val T
+
+	getCollection(parent, val.GetCollectionName(), val.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
+		err = c.FindOne(ctx, filter).Decode(&val)
+	})
+
+	return &val, err
+}

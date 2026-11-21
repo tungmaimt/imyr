@@ -377,3 +377,20 @@ func Count[T Model](parent context.Context, filter map[string]any) (int64, error
 
 // 	return
 // }
+
+type Repo2[T Model] interface {
+	InsertOne(parent context.Context, doc T, opt *OptionBuilder) (any, error)
+	FindOne(parent context.Context, filter map[string]any, opt *OptionBuilder) (*T, error)
+}
+
+func GetRepo[T Model]() Repo2[T] {
+	return mongoRepo2[T]{}
+}
+
+func RFindOne[T Model](parent context.Context, repo Repo2[T], filter map[string]any, opt *OptionBuilder) (*T, error) {
+	return repo.FindOne(parent, filter, opt)
+}
+
+func RInsertOne[T Model](parent context.Context, repo Repo2[T], doc T, opt *OptionBuilder) (any, error) {
+	return repo.InsertOne(parent, doc, opt)
+}
