@@ -1,6 +1,10 @@
 package bed
 
-import "proj/imyr/config"
+import (
+	"proj/imyr/config"
+	"proj/imyr/db"
+	"sync"
+)
 
 type BedModel struct {
 	Name   string `json:"name"`
@@ -17,4 +21,15 @@ func (u BedModel) GetCollectionName() string {
 
 func (BedModel) GetDbName() string {
 	return config.DB_NAME
+}
+
+var repo db.Repo2[BedModel]
+var once = sync.Once{}
+
+func GetBedRepo() db.Repo2[BedModel] {
+	once.Do(func() {
+		repo = db.GetRepo[BedModel]()
+	})
+
+	return repo
 }

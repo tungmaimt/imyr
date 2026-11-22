@@ -52,10 +52,6 @@ func (UserModel) GetDbName() string {
 	return config.DB_NAME
 }
 
-const ROLE_ADMIN = "admin"
-const ROLE_STAFF = "staff"
-const ROLE_BANNED = "banned"
-
 var repo db.Repo2[UserModel]
 var once = sync.Once{}
 
@@ -66,3 +62,7 @@ func GetUserRepo() db.Repo2[UserModel] {
 
 	return repo
 }
+
+const ROLE_ADMIN = "admin"
+const ROLE_STAFF = "staff"
+const ROLE_BANNED = "banned"

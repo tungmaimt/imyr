@@ -14,5 +14,6 @@ func Router(app fiber.Router, api fiber.Router) {
 		[]core.Method{core.GET, core.POST, core.PUT, core.DELETE},
 		auth.RequireAuthenApi(),
 		[]fiber.Handler{core.LogURL, core.LogReq},
+		GetBedRepo(),
 	)
 }

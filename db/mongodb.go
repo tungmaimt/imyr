@@ -149,141 +149,15 @@ func convertFindOptions(opt *FindOptionBuilder) *options.FindOptionsBuilder {
 	return mongoFindOpt.Builder
 }
 
-type mongoRepo[T Model] struct {
-}
-
-func (mongoRepo[T]) CreateIndex(parent context.Context, indexs []IndexModel, ins Model) (err error) {
-	fmt.Println("create index with ", ins.GetCollectionName(), len(indexs))
-	getCollection(
-		parent,
-		ins.GetCollectionName(),
-		ins.GetDbName(),
-		func(ctx context.Context, c *mongo.Collection) {
-			names, cerr := c.Indexes().CreateMany(ctx, convertIndexs(indexs))
-			err = cerr
-
-			if err != nil {
-				fmt.Print(err)
-				return
-			}
-
-			fmt.Printf("Create index for %s: %v\n", ins.GetCollectionName(), names)
-		},
-	)
-
-	return
-}
-
-func (mongoRepo[T]) InsertOne(parent context.Context, coll string, dbname string, doc T, opt *OptionBuilder) (any, error) {
-	var result *mongo.InsertOneResult
-	var err error
-
-	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
-		result, err = c.InsertOne(ctx, doc)
-	})
-
-	return result.InsertedID, err
-}
-
-func (mongoRepo[T]) InsertMany(parent context.Context, coll string, dbname string, docs []T, opt *OptionBuilder) ([]any, error) {
-	var result *mongo.InsertManyResult
-	var err error
-
-	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
-		result, err = c.InsertMany(ctx, docs)
-	})
-
-	return result.InsertedIDs, err
-}
-
-func (mongoRepo[T]) Find(parent context.Context, coll string, dbname string, docs []T, filter map[string]any, opt *FindOptionBuilder) ([]T, error) {
-	var err error
-	var val []T
-
-	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
-		curs, err := c.Find(ctx, filter, convertFindOptions(opt))
-		if err != nil {
-			return
-		}
-		err = curs.All(ctx, &val)
-	})
-
-	return val, err
-}
-
-func (mongoRepo[T]) FindOne(parent context.Context, coll string, dbname string, doc *T, filter map[string]any, opt *OptionBuilder) (*T, error) {
-	var err error
-	var val T
-
-	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
-		err = c.FindOne(ctx, filter).Decode(&val)
-	})
-
-	return &val, err
-}
-
-func (mongoRepo[T]) UpdateOne(parent context.Context, coll string, dbname string, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error) {
-	var result *mongo.UpdateResult
-	var err error
-
-	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
-		result, err = c.UpdateOne(ctx, filter, update)
-	})
-
-	return result.ModifiedCount, err
-}
-
-func (mongoRepo[T]) UpdateMany(parent context.Context, coll string, dbname string, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error) {
-	var result *mongo.UpdateResult
-	var err error
-
-	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
-		result, err = c.UpdateMany(ctx, filter, update)
-	})
-
-	return result.ModifiedCount, err
-}
-
-func (mongoRepo[T]) DeleteOne(parent context.Context, coll string, dbname string, filter map[string]any, opt *OptionBuilder) (int64, error) {
-	var result *mongo.DeleteResult
-	var err error
-
-	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
-		result, err = c.DeleteOne(ctx, filter)
-	})
-
-	return result.DeletedCount, err
-}
-
-func (mongoRepo[T]) DeleteMany(parent context.Context, coll string, dbname string, filter map[string]any, opt *OptionBuilder) (int64, error) {
-	var result *mongo.DeleteResult
-	var err error
-
-	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
-		result, err = c.DeleteMany(ctx, filter)
-	})
-
-	return result.DeletedCount, err
-}
-
-func (mongoRepo[T]) Count(parent context.Context, coll string, dbname string, filter map[string]any) (int64, error) {
-	var result int64
-	var err error
-	getCollection(parent, coll, dbname, func(ctx context.Context, c *mongo.Collection) {
-		result, err = c.CountDocuments(ctx, filter)
-	})
-
-	return result, err
-}
-
 type mongoRepo2[T Model] struct {
 }
 
-func (m mongoRepo2[T]) InsertOne(parent context.Context, doc T, opt *OptionBuilder) (any, error) {
+func (m mongoRepo2[T]) InsertOne(parent context.Context, doc *T, opt *OptionBuilder) (any, error) {
 	var result *mongo.InsertOneResult
 	var err error
+	var docIns = *doc
 
-	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
+	getCollection(parent, docIns.GetCollectionName(), docIns.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
 		result, err = c.InsertOne(ctx, doc)
 	})
 
@@ -299,4 +173,117 @@ func (m mongoRepo2[T]) FindOne(parent context.Context, filter map[string]any, op
 	})
 
 	return &val, err
+}
+
+func (m mongoRepo2[T]) CreateIndex(parent context.Context, indexs []IndexModel) error {
+	var doc T
+	var err error
+
+	fmt.Println("create index with ", doc.GetCollectionName(), len(indexs))
+	getCollection(
+		parent,
+		doc.GetCollectionName(),
+		doc.GetDbName(),
+		func(ctx context.Context, c *mongo.Collection) {
+			names, cerr := c.Indexes().CreateMany(ctx, convertIndexs(indexs))
+			err = cerr
+
+			if err != nil {
+				fmt.Print(err)
+				return
+			}
+
+			fmt.Printf("Create index for %s: %v\n", doc.GetCollectionName(), names)
+		},
+	)
+
+	return err
+}
+
+func (m mongoRepo2[T]) InsertMany(parent context.Context, docs []T, opt *OptionBuilder) ([]any, error) {
+	var doc T
+	var result *mongo.InsertManyResult
+	var err error
+
+	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
+		result, err = c.InsertMany(ctx, docs)
+	})
+
+	return result.InsertedIDs, err
+}
+
+func (m mongoRepo2[T]) Find(parent context.Context, filter map[string]any, opt *FindOptionBuilder) ([]T, error) {
+	var doc T
+	var err error
+	var val []T
+
+	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
+		curs, err := c.Find(ctx, filter, convertFindOptions(opt))
+		if err != nil {
+			return
+		}
+		err = curs.All(ctx, &val)
+	})
+
+	return val, err
+}
+
+func (m mongoRepo2[T]) UpdateOne(parent context.Context, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error) {
+	var doc T
+	var result *mongo.UpdateResult
+	var err error
+
+	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
+		result, err = c.UpdateOne(ctx, filter, update)
+	})
+
+	return result.ModifiedCount, err
+}
+
+func (m mongoRepo2[T]) UpdateMany(parent context.Context, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error) {
+	var doc T
+	var result *mongo.UpdateResult
+	var err error
+
+	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
+		result, err = c.UpdateMany(ctx, filter, update)
+	})
+
+	return result.ModifiedCount, err
+}
+
+func (m mongoRepo2[T]) DeleteOne(parent context.Context, filter map[string]any, opt *OptionBuilder) (int64, error) {
+	var doc T
+	var result *mongo.DeleteResult
+	var err error
+
+	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
+		result, err = c.DeleteOne(ctx, filter)
+	})
+
+	return result.DeletedCount, err
+}
+
+func (m mongoRepo2[T]) DeleteMany(parent context.Context, filter map[string]any, opt *OptionBuilder) (int64, error) {
+	var doc T
+	var result *mongo.DeleteResult
+	var err error
+
+	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
+		result, err = c.DeleteMany(ctx, filter)
+	})
+
+	return result.DeletedCount, err
+}
+
+func (m mongoRepo2[T]) Count(parent context.Context, filter map[string]any) (int64, error) {
+	var doc T
+	var result int64
+	var err error
+
+	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
+		result, err = c.CountDocuments(ctx, filter)
+	})
+
+	return result, err
 }

@@ -3,7 +3,6 @@ package user
 import (
 	"proj/imyr/auth"
 	"proj/imyr/core"
-	"proj/imyr/db"
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -34,7 +33,7 @@ func getProfile(c *fiber.Ctx, d map[string]any) error {
 		"desc":     u.Email,
 	}
 
-	profile, err := db.FindOne[ProfileModel](ctx, map[string]any{"user": u.ID}, nil)
+	profile, err := GetProfileRepo().FindOne(ctx, map[string]any{"user": u.ID}, nil)
 
 	if err == mongo.ErrNoDocuments {
 		return c.JSON(fiber.Map{

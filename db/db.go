@@ -18,24 +18,6 @@ type Model interface {
 	GetDbName() string
 }
 
-type Repo[T Model] interface {
-	CreateIndex(parent context.Context, indexs []IndexModel, ins Model) error
-	InsertOne(parent context.Context, coll string, dbname string, doc T, opt *OptionBuilder) (any, error)
-	InsertMany(parent context.Context, coll string, dbname string, docs []T, opt *OptionBuilder) ([]any, error)
-	Find(parent context.Context, coll string, dbname string, docs []T, filter map[string]any, opt *FindOptionBuilder) ([]T, error)
-	FindOne(parent context.Context, coll string, dbname string, doc *T, filter map[string]any, opt *OptionBuilder) (*T, error)
-	UpdateOne(parent context.Context, coll string, dbname string, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error)
-	UpdateMany(parent context.Context, coll string, dbname string, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error)
-	DeleteOne(parent context.Context, coll string, dbname string, filter map[string]any, opt *OptionBuilder) (int64, error)
-	DeleteMany(parent context.Context, coll string, dbname string, filter map[string]any, opt *OptionBuilder) (int64, error)
-	Count(parent context.Context, coll string, dbname string, filter map[string]any) (int64, error)
-}
-
-func getRepo[T Model]() Repo[T] {
-	repo := mongoRepo[T]{}
-	return repo
-}
-
 type MultiDbError struct{}
 
 func (e *MultiDbError) Error() string {
@@ -134,13 +116,13 @@ type IndexModel struct {
 
 type IndexConfig struct {
 	ins    Model
-	create func(parent context.Context, indexs []IndexModel, ins Model) error
+	create func(parent context.Context, indexs []IndexModel) error
 	indexs []IndexModel
 }
 
 var indexCfgs = []IndexConfig{}
 
-func AddIndex[T Model](fields []string, dirs []int, opts *IndexOptionsBuilder) (index1 int, index2 int) {
+func AddIndex[T Model](repo Repo2[T], fields []string, dirs []int, opts *IndexOptionsBuilder) (index1 int, index2 int) {
 	var ins T
 
 	index := slices.IndexFunc(indexCfgs, func(ic IndexConfig) bool {
@@ -150,7 +132,7 @@ func AddIndex[T Model](fields []string, dirs []int, opts *IndexOptionsBuilder) (
 	if index == -1 {
 		indexCfgs = append(indexCfgs, IndexConfig{
 			ins:    ins,
-			create: getRepo[T]().CreateIndex,
+			create: repo.CreateIndex,
 			indexs: []IndexModel{},
 		})
 
@@ -171,7 +153,7 @@ func AddIndex[T Model](fields []string, dirs []int, opts *IndexOptionsBuilder) (
 func CreateIndex(parent context.Context) error {
 	var err error
 	for _, indexConfig := range indexCfgs {
-		err = indexConfig.create(parent, indexConfig.indexs, indexConfig.ins)
+		err = indexConfig.create(parent, indexConfig.indexs)
 		if err != nil {
 			return err
 		}
@@ -210,187 +192,19 @@ func init() {
 	fmt.Println("Pinged your deployment. You successfully connected to MongoDB!")
 }
 
-func InsertOne[T Model](parent context.Context, doc T, opt *OptionBuilder) (any, error) {
-	return getRepo[T]().InsertOne(parent, doc.GetCollectionName(), doc.GetDbName(), doc, opt)
-}
-
-// func InsertOne[T Model](parent context.Context, doc T, opt ...option) (result *mongo.InsertOneResult, err error) {
-// 	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
-// 		result, err = c.InsertOne(ctx, doc)
-// 	})
-
-// 	return
-// }
-
-func InsertMany[T Model](parent context.Context, docs []T, opt *OptionBuilder) ([]any, error) {
-	var doc T
-
-	mDocs := make([]T, len(docs))
-	copy(mDocs, docs)
-
-	return getRepo[T]().InsertMany(parent, doc.GetCollectionName(), doc.GetDbName(), mDocs, opt)
-}
-
-// func InsertMany[T Model](parent context.Context, docs []T, opt ...option) (results []mongo.InsertManyResult, err error) {
-// 	var doc T
-
-// 	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
-// 		result, cErr := c.InsertMany(ctx, docs)
-// 		err = cErr
-// 		results = append(results, *result)
-// 	})
-
-// 	return
-// }
-
-func Find[T Model](parent context.Context, filter map[string]any, opt *FindOptionBuilder) ([]T, error) {
-	var doc T
-	var docs []T
-
-	docs, err := getRepo[T]().Find(parent, doc.GetCollectionName(), doc.GetDbName(), docs, filter, opt)
-
-	// result := make([]T, len(docs))
-	// for i, d := range docs {
-	// 	val, ok := d.(T)
-	// 	if !ok {
-	// 		return result, fmt.Errorf("elem at index %d as incorrect type %T", i, d)
-	// 	}
-
-	// 	result[i] = val
-	// }
-
-	return docs, err
-}
-
-// func Find[T Model](parent context.Context, filter map[string]any, opt ...FindOption) (docs []T, err error) {
-// 	var docIns T
-
-// 	getCollection(parent, docIns.GetCollectionName(), docIns.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
-// 		curs, e := c.Find(ctx, filter, useFindOptions(opt...))
-// 		if e != nil {
-// 			err = e
-// 			return
-// 		}
-// 		err = curs.All(ctx, &docs)
-// 	})
-
-// 	return
-// }
-
-func FindOne[T Model](parent context.Context, filter map[string]any, opt *OptionBuilder) (*T, error) {
-	var doc T
-
-	result, err := getRepo[T]().FindOne(parent, doc.GetCollectionName(), doc.GetDbName(), &doc, filter, opt)
-
-	// fmt.Println("rrrrrrrrrrrrr", result)
-	// fmt.Printf("%T\n", result)
-
-	// doc, ok := result.(T)
-	// if !ok {
-	// 	return nil, fmt.Errorf("incorrect type %T", result)
-	// }
-
-	return result, err
-}
-
-// func FindOne[T Model](parent context.Context, filter map[string]any, opt ...option) (result *T, err error) {
-// 	var doc T
-
-// 	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
-// 		err = c.FindOne(ctx, filter).Decode(&doc)
-// 		result = &doc
-// 	})
-
-// 	return
-// }
-
-func UpdateOne[T Model](parent context.Context, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error) {
-	var doc T
-	return getRepo[T]().UpdateOne(parent, doc.GetCollectionName(), doc.GetDbName(), filter, update, opt)
-}
-
-// func UpdateOne[T Model](parent context.Context, filter map[string]any, update map[string]any, opt ...option) (result *mongo.UpdateResult, err error) {
-// 	var doc T
-
-// 	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
-// 		result, err = c.UpdateOne(ctx, filter, update)
-// 	})
-
-// 	return
-// }
-
-func UpdateMany[T Model](parent context.Context, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error) {
-	var doc T
-	return getRepo[T]().UpdateMany(parent, doc.GetCollectionName(), doc.GetDbName(), filter, update, opt)
-}
-
-// func UpdateMany[T Model](parent context.Context, filter map[string]any, update map[string]any, opt ...option) (result *mongo.UpdateResult, err error) {
-// 	var doc T
-
-// 	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
-// 		result, err = c.UpdateMany(ctx, filter, update)
-// 	})
-
-// 	return
-// }
-
-func DeleteOne[T Model](parent context.Context, filter map[string]any, opt *OptionBuilder) (int64, error) {
-	var doc T
-	return getRepo[T]().DeleteOne(parent, doc.GetCollectionName(), doc.GetDbName(), filter, opt)
-}
-
-// func DeleteOne[T Model](parent context.Context, filter map[string]any, opt ...option) (result *mongo.DeleteResult, err error) {
-// 	var doc T
-
-// 	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
-// 		result, err = c.DeleteOne(ctx, filter)
-// 	})
-
-// 	return
-// }
-
-func DeleteMany[T Model](parent context.Context, filter map[string]any, opt *OptionBuilder) (int64, error) {
-	var doc T
-	return getRepo[T]().DeleteMany(parent, doc.GetCollectionName(), doc.GetDbName(), filter, opt)
-}
-
-// func DeleteMany[T Model](parent context.Context, filter map[string]any, opt ...option) (result *mongo.DeleteResult, err error) {
-// 	var doc T
-
-// 	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
-// 		result, err = c.DeleteMany(ctx, filter)
-// 	})
-
-// 	return
-// }
-
-func Count[T Model](parent context.Context, filter map[string]any) (int64, error) {
-	var doc T
-	return getRepo[T]().Count(parent, doc.GetCollectionName(), doc.GetDbName(), filter)
-}
-
-// func Count[T Model](parent context.Context, filter map[string]any) (result int64, err error) {
-// 	var doc T
-// 	getCollection(parent, doc.GetCollectionName(), doc.GetDbName(), func(ctx context.Context, c *mongo.Collection) {
-// 		result, err = c.CountDocuments(ctx, filter)
-// 	})
-
-// 	return
-// }
-
 type Repo2[T Model] interface {
-	InsertOne(parent context.Context, doc T, opt *OptionBuilder) (any, error)
+	InsertOne(parent context.Context, doc *T, opt *OptionBuilder) (any, error)
 	FindOne(parent context.Context, filter map[string]any, opt *OptionBuilder) (*T, error)
+	CreateIndex(parent context.Context, indexs []IndexModel) error
+	InsertMany(parent context.Context, docs []T, opt *OptionBuilder) ([]any, error)
+	Find(parent context.Context, filter map[string]any, opt *FindOptionBuilder) ([]T, error)
+	UpdateOne(parent context.Context, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error)
+	UpdateMany(parent context.Context, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error)
+	DeleteOne(parent context.Context, filter map[string]any, opt *OptionBuilder) (int64, error)
+	DeleteMany(parent context.Context, filter map[string]any, opt *OptionBuilder) (int64, error)
+	Count(parent context.Context, filter map[string]any) (int64, error)
 }
 
 func GetRepo[T Model]() Repo2[T] {
 	return mongoRepo2[T]{}
-}
-
-func RFindOne[T Model](parent context.Context, repo Repo2[T], filter map[string]any, opt *OptionBuilder) (*T, error) {
-	return repo.FindOne(parent, filter, opt)
-}
-
-func RInsertOne[T Model](parent context.Context, repo Repo2[T], doc T, opt *OptionBuilder) (any, error) {
-	return repo.InsertOne(parent, doc, opt)
 }

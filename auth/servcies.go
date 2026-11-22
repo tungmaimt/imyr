@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"proj/imyr/config"
 	"proj/imyr/core"
-	"proj/imyr/db"
 	"proj/imyr/services"
 	"slices"
 	"time"
@@ -39,7 +38,7 @@ func checkToken(ctx context.Context, s string) (*UserModel, error) {
 		return user, newAuthError(AuthErrorInvalidUser, "Invalid yid")
 	}
 
-	user, err = db.FindOne[UserModel](ctx, map[string]any{"_id": obid}, nil)
+	user, err = GetUserRepo().FindOne(ctx, map[string]any{"_id": obid}, nil)
 
 	if err == mongo.ErrNoDocuments {
 		return user, newAuthError(AuthErrorNoUser, "No user")
@@ -311,12 +310,12 @@ func GetUserBindData(c *fiber.Ctx) fiber.Map {
 // Db use
 
 func FindUsers(ctx context.Context, filter map[string]any) (users []UserModel, err error) {
-	users, err = db.Find[UserModel](ctx, filter, nil)
+	users, err = GetUserRepo().Find(ctx, filter, nil)
 	return
 }
 
 func insertUsers(ctx context.Context, users []UserModel) ([]any, error) {
-	insertedIds, err := db.InsertMany(ctx, users, nil)
+	insertedIds, err := GetUserRepo().InsertMany(ctx, users, nil)
 	return insertedIds, err
 }
 

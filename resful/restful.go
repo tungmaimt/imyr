@@ -18,7 +18,7 @@ type Filter struct {
 	Filters []string `query:"filters"`
 }
 
-func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.Handler, middlewares []fiber.Handler) {
+func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.Handler, middlewares []fiber.Handler, repo db.Repo2[T]) {
 	var ins T
 	path := strings.ToLower(ins.GetCollectionName())
 	idPath := fmt.Sprintf("%s/:id", path)
@@ -38,7 +38,7 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 						ctx := c.Context()
 						objId, _ := bson.ObjectIDFromHex(c.Params("id"))
 
-						doc, err := db.FindOne[T](
+						doc, err := repo.FindOne(
 							ctx, map[string]any{
 								"_id": objId,
 							},
@@ -83,7 +83,7 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 							filter = config.FilterFromQueryString(filterStr.Filters)
 						}
 
-						docs, err := db.Find[T](ctx, filter, nil)
+						docs, err := repo.Find(ctx, filter, nil)
 
 						if err != nil {
 							fmt.Println("restfull RestFUL db.Find err", err)
@@ -140,7 +140,7 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 						})
 					}
 
-					result, err := db.InsertOne(ctx, *ins, nil)
+					result, err := repo.InsertOne(ctx, ins, nil)
 
 					if err != nil {
 						return c.Status(400).JSON(fiber.Map{
@@ -186,7 +186,7 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 
 					fmt.Print(c.Params("id"), "--restful--", d)
 
-					result, err := db.UpdateOne[T](ctx, map[string]any{"_id": objId}, map[string]any{"$set": d}, nil)
+					result, err := repo.UpdateOne(ctx, map[string]any{"_id": objId}, map[string]any{"$set": d}, nil)
 
 					if err != nil {
 						return c.Status(400).JSON(fiber.Map{
@@ -211,7 +211,7 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 					ctx := c.Context()
 					objId, err := bson.ObjectIDFromHex(c.Params("id"))
 
-					result, err := db.UpdateOne[T](
+					result, err := repo.UpdateOne(
 						ctx,
 						map[string]any{"_id": objId},
 						map[string]any{"$set": map[string]any{"status": config.STATUS_DELETED}},

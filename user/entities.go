@@ -2,6 +2,8 @@ package user
 
 import (
 	"proj/imyr/config"
+	"proj/imyr/db"
+	"sync"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
@@ -36,4 +38,15 @@ func (p ProfileModel) GetCollectionName() string {
 
 func (ProfileModel) GetDbName() string {
 	return config.DB_NAME
+}
+
+var repo db.Repo2[ProfileModel]
+var once sync.Once
+
+func GetProfileRepo() db.Repo2[ProfileModel] {
+	once.Do(func() {
+		repo = db.GetRepo[ProfileModel]()
+	})
+
+	return repo
 }
