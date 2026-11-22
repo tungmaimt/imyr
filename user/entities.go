@@ -40,10 +40,10 @@ func (ProfileModel) GetDbName() string {
 	return config.DB_NAME
 }
 
-var repo db.Repo2[ProfileModel]
+var repo db.Repo[ProfileModel]
 var once sync.Once
 
-func GetProfileRepo() db.Repo2[ProfileModel] {
+func GetProfileRepo() db.Repo[ProfileModel] {
 	once.Do(func() {
 		repo = db.GetRepo[ProfileModel]()
 	})

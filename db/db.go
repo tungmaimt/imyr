@@ -24,6 +24,23 @@ func (e *MultiDbError) Error() string {
 	return "mongodb: multi database, should use only 1 database for each query"
 }
 
+type Repo[T Model] interface {
+	InsertOne(parent context.Context, doc *T, opt *OptionBuilder) (any, error)
+	FindOne(parent context.Context, filter map[string]any, opt *OptionBuilder) (*T, error)
+	CreateIndex(parent context.Context, indexs []IndexModel) error
+	InsertMany(parent context.Context, docs []T, opt *OptionBuilder) ([]any, error)
+	Find(parent context.Context, filter map[string]any, opt *FindOptionBuilder) ([]T, error)
+	UpdateOne(parent context.Context, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error)
+	UpdateMany(parent context.Context, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error)
+	DeleteOne(parent context.Context, filter map[string]any, opt *OptionBuilder) (int64, error)
+	DeleteMany(parent context.Context, filter map[string]any, opt *OptionBuilder) (int64, error)
+	Count(parent context.Context, filter map[string]any) (int64, error)
+}
+
+func GetRepo[T Model]() Repo[T] {
+	return mongoRepo[T]{}
+}
+
 type Option struct{}
 
 type OptionBuilder struct {
@@ -122,7 +139,7 @@ type IndexConfig struct {
 
 var indexCfgs = []IndexConfig{}
 
-func AddIndex[T Model](repo Repo2[T], fields []string, dirs []int, opts *IndexOptionsBuilder) (index1 int, index2 int) {
+func AddIndex[T Model](repo Repo[T], fields []string, dirs []int, opts *IndexOptionsBuilder) (index1 int, index2 int) {
 	var ins T
 
 	index := slices.IndexFunc(indexCfgs, func(ic IndexConfig) bool {
@@ -190,21 +207,4 @@ func init() {
 		panic(err)
 	}
 	fmt.Println("Pinged your deployment. You successfully connected to MongoDB!")
-}
-
-type Repo2[T Model] interface {
-	InsertOne(parent context.Context, doc *T, opt *OptionBuilder) (any, error)
-	FindOne(parent context.Context, filter map[string]any, opt *OptionBuilder) (*T, error)
-	CreateIndex(parent context.Context, indexs []IndexModel) error
-	InsertMany(parent context.Context, docs []T, opt *OptionBuilder) ([]any, error)
-	Find(parent context.Context, filter map[string]any, opt *FindOptionBuilder) ([]T, error)
-	UpdateOne(parent context.Context, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error)
-	UpdateMany(parent context.Context, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error)
-	DeleteOne(parent context.Context, filter map[string]any, opt *OptionBuilder) (int64, error)
-	DeleteMany(parent context.Context, filter map[string]any, opt *OptionBuilder) (int64, error)
-	Count(parent context.Context, filter map[string]any) (int64, error)
-}
-
-func GetRepo[T Model]() Repo2[T] {
-	return mongoRepo2[T]{}
 }

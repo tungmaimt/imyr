@@ -52,10 +52,10 @@ func (UserModel) GetDbName() string {
 	return config.DB_NAME
 }
 
-var repo db.Repo2[UserModel]
+var repo db.Repo[UserModel]
 var once = sync.Once{}
 
-func GetUserRepo() db.Repo2[UserModel] {
+func GetUserRepo() db.Repo[UserModel] {
 	once.Do(func() {
 		repo = db.GetRepo[UserModel]()
 	})

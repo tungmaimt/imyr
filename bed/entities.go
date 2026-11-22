@@ -23,10 +23,10 @@ func (BedModel) GetDbName() string {
 	return config.DB_NAME
 }
 
-var repo db.Repo2[BedModel]
+var repo db.Repo[BedModel]
 var once = sync.Once{}
 
-func GetBedRepo() db.Repo2[BedModel] {
+func GetBedRepo() db.Repo[BedModel] {
 	once.Do(func() {
 		repo = db.GetRepo[BedModel]()
 	})

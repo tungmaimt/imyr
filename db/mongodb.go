@@ -149,10 +149,10 @@ func convertFindOptions(opt *FindOptionBuilder) *options.FindOptionsBuilder {
 	return mongoFindOpt.Builder
 }
 
-type mongoRepo2[T Model] struct {
+type mongoRepo[T Model] struct {
 }
 
-func (m mongoRepo2[T]) InsertOne(parent context.Context, doc *T, opt *OptionBuilder) (any, error) {
+func (m mongoRepo[T]) InsertOne(parent context.Context, doc *T, opt *OptionBuilder) (any, error) {
 	var result *mongo.InsertOneResult
 	var err error
 	var docIns = *doc
@@ -164,7 +164,7 @@ func (m mongoRepo2[T]) InsertOne(parent context.Context, doc *T, opt *OptionBuil
 	return result.InsertedID, err
 }
 
-func (m mongoRepo2[T]) FindOne(parent context.Context, filter map[string]any, opt *OptionBuilder) (*T, error) {
+func (m mongoRepo[T]) FindOne(parent context.Context, filter map[string]any, opt *OptionBuilder) (*T, error) {
 	var err error
 	var val T
 
@@ -175,7 +175,7 @@ func (m mongoRepo2[T]) FindOne(parent context.Context, filter map[string]any, op
 	return &val, err
 }
 
-func (m mongoRepo2[T]) CreateIndex(parent context.Context, indexs []IndexModel) error {
+func (m mongoRepo[T]) CreateIndex(parent context.Context, indexs []IndexModel) error {
 	var doc T
 	var err error
 
@@ -200,7 +200,7 @@ func (m mongoRepo2[T]) CreateIndex(parent context.Context, indexs []IndexModel) 
 	return err
 }
 
-func (m mongoRepo2[T]) InsertMany(parent context.Context, docs []T, opt *OptionBuilder) ([]any, error) {
+func (m mongoRepo[T]) InsertMany(parent context.Context, docs []T, opt *OptionBuilder) ([]any, error) {
 	var doc T
 	var result *mongo.InsertManyResult
 	var err error
@@ -212,7 +212,7 @@ func (m mongoRepo2[T]) InsertMany(parent context.Context, docs []T, opt *OptionB
 	return result.InsertedIDs, err
 }
 
-func (m mongoRepo2[T]) Find(parent context.Context, filter map[string]any, opt *FindOptionBuilder) ([]T, error) {
+func (m mongoRepo[T]) Find(parent context.Context, filter map[string]any, opt *FindOptionBuilder) ([]T, error) {
 	var doc T
 	var err error
 	var val []T
@@ -228,7 +228,7 @@ func (m mongoRepo2[T]) Find(parent context.Context, filter map[string]any, opt *
 	return val, err
 }
 
-func (m mongoRepo2[T]) UpdateOne(parent context.Context, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error) {
+func (m mongoRepo[T]) UpdateOne(parent context.Context, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error) {
 	var doc T
 	var result *mongo.UpdateResult
 	var err error
@@ -240,7 +240,7 @@ func (m mongoRepo2[T]) UpdateOne(parent context.Context, filter map[string]any, 
 	return result.ModifiedCount, err
 }
 
-func (m mongoRepo2[T]) UpdateMany(parent context.Context, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error) {
+func (m mongoRepo[T]) UpdateMany(parent context.Context, filter map[string]any, update map[string]any, opt *OptionBuilder) (int64, error) {
 	var doc T
 	var result *mongo.UpdateResult
 	var err error
@@ -252,7 +252,7 @@ func (m mongoRepo2[T]) UpdateMany(parent context.Context, filter map[string]any,
 	return result.ModifiedCount, err
 }
 
-func (m mongoRepo2[T]) DeleteOne(parent context.Context, filter map[string]any, opt *OptionBuilder) (int64, error) {
+func (m mongoRepo[T]) DeleteOne(parent context.Context, filter map[string]any, opt *OptionBuilder) (int64, error) {
 	var doc T
 	var result *mongo.DeleteResult
 	var err error
@@ -264,7 +264,7 @@ func (m mongoRepo2[T]) DeleteOne(parent context.Context, filter map[string]any, 
 	return result.DeletedCount, err
 }
 
-func (m mongoRepo2[T]) DeleteMany(parent context.Context, filter map[string]any, opt *OptionBuilder) (int64, error) {
+func (m mongoRepo[T]) DeleteMany(parent context.Context, filter map[string]any, opt *OptionBuilder) (int64, error) {
 	var doc T
 	var result *mongo.DeleteResult
 	var err error
@@ -276,7 +276,7 @@ func (m mongoRepo2[T]) DeleteMany(parent context.Context, filter map[string]any,
 	return result.DeletedCount, err
 }
 
-func (m mongoRepo2[T]) Count(parent context.Context, filter map[string]any) (int64, error) {
+func (m mongoRepo[T]) Count(parent context.Context, filter map[string]any) (int64, error) {
 	var doc T
 	var result int64
 	var err error

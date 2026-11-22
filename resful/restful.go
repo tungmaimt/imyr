@@ -18,7 +18,7 @@ type Filter struct {
 	Filters []string `query:"filters"`
 }
 
-func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.Handler, middlewares []fiber.Handler, repo db.Repo2[T]) {
+func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.Handler, middlewares []fiber.Handler, repo db.Repo[T]) {
 	var ins T
 	path := strings.ToLower(ins.GetCollectionName())
 	idPath := fmt.Sprintf("%s/:id", path)
