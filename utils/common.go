@@ -202,12 +202,23 @@ func FilterFromQueryString(queries []string) map[string]any {
 	return filter
 }
 
-func GetMapValue[K comparable, T any](m map[K]any, key K, defaultVal T) T {
-	if rawVal, exists := m[key]; exists {
-		if val, ok := rawVal.(T); ok {
-			return val
-		}
+func GetMapValue[K comparable, T comparable](m map[K]any, key K, defaultVal T) T {
+	rawVal, exists := m[key]
+	if !exists || rawVal == nil {
+		return defaultVal
 	}
+
+	if val, ok := rawVal.(T); ok {
+		return val
+	}
+
+	val := reflect.ValueOf(rawVal)
+	toType := reflect.TypeOf((*T)(nil)).Elem()
+
+	if val.Type().ConvertibleTo(toType) {
+		return val.Convert(toType).Interface().(T)
+	}
+
 	return defaultVal
 }
 
