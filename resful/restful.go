@@ -6,7 +6,7 @@ import (
 	"proj/imyr/config"
 	"proj/imyr/core"
 	"proj/imyr/db"
-	"proj/imyr/services"
+	"proj/imyr/utils"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -61,7 +61,7 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 
 						return c.JSON(fiber.Map{
 							"status": 200,
-							"data":   services.StructToMap(doc),
+							"data":   utils.StructToMap(doc),
 						})
 					},
 				},
@@ -96,7 +96,7 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 						data := []map[string]any{}
 
 						for _, doc := range docs {
-							data = append(data, services.StructToMap(doc))
+							data = append(data, utils.StructToMap(doc))
 						}
 
 						return c.JSON(fiber.Map{
@@ -131,7 +131,7 @@ func RestFul[T db.Model](group fiber.Router, methods []core.Method, auth fiber.H
 						d["status"] = config.STATUS_ACTIVE
 					}
 
-					ins, err := services.MapToStruct[T](d)
+					ins, err := utils.MapToStruct[T](d)
 
 					if err != nil {
 						return c.Status(400).JSON(fiber.Map{

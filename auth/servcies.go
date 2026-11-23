@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"proj/imyr/config"
 	"proj/imyr/core"
-	"proj/imyr/services"
+	"proj/imyr/utils"
 	"slices"
 	"time"
 
@@ -304,7 +304,7 @@ func GetUserBindData(c *fiber.Ctx) fiber.Map {
 		return fiber.Map{}
 	}
 
-	return services.StructToMap(user)
+	return utils.StructToMap(user)
 }
 
 // Db use
@@ -329,7 +329,7 @@ func CreateUser(ctx context.Context, email string, username string, password str
 		Updated:  time.Now(),
 	}
 
-	err = services.Validator.Validate.Struct(doc)
+	err = utils.Validator.Validate.Struct(doc)
 
 	if err != nil {
 		return nil, fmt.Errorf("validate error for: %w", err)
